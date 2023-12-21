@@ -1,0 +1,12 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/mnt/c/projects/playground/service-comparison",
+            "binaryPath": "/mnt/c/projects/playground/service-comparison/cshop",
+            "binaryArgs": []
+        }
+    ],
+    "files.associations": {
+        "stdlib.h": "c"
+    }
+}
