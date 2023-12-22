@@ -1,13 +1,8 @@
-
 CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic `pkg-config --cflags libpq`
 LDFLAGS = `pkg-config --libs libpq`
 
-ifeq ($(OS),Windows_NT)
-    CFLAGS += -static
-endif
-
-EXEC = cshop
+TARGETS = displayorders addorder
 
 SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%.c,build/%.o,$(SRC))
@@ -15,11 +10,19 @@ OBJ = $(patsubst src/%.c,build/%.o,$(SRC))
 .PHONY: all debug clean
 
 all: CFLAGS += -O3
-all: $(EXEC)
+all: $(TARGETS)
 
-debug: CFLAGS += -g3 -fsanitize=undefined -fsanitize=address -static
+debug: CFLAGS += -g3 -fsanitize=undefined -fsanitize=address
 debug: LDFLAGS += -fsanitize=undefined -fsanitize=address
-debug: $(EXEC)
+debug: $(TARGETS)
+
+# we assume that each executable has only one corresponding object file
+define build_exec =
+$(1): build/$(1).o
+	$(CC) $$^ -o $$@ $(LDFLAGS)
+endef
+
+$(foreach target,$(TARGETS),$(eval $(call build_exec,$(target))))
 
 $(EXEC): $(OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS)
@@ -31,4 +34,4 @@ build:
 	mkdir -p $@
 
 clean:
-	rm -rf cshop/build $(EXEC)
+	rm -rf build $(EXEC)
