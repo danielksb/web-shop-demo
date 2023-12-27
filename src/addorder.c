@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <string.h>
 #include <libpq-fe.h>
 
@@ -15,6 +16,12 @@ typedef struct {
     int id;
     int count;
 } ItemCount;
+
+typedef enum {
+    NOERROR = 0,
+    DATABASE_ERROR = 1,
+    ID_NOT_FOUND = 2
+} Error;
 
 
 int find_item_count(int target, ItemCount lst[], int len) {
@@ -43,6 +50,31 @@ void count_item_ids(ItemCount* counts, int *num_counts, int max_counts, int item
     *num_counts = current_item_count_length;
 }
 
+/// @brief Returns price from an item
+/// @param conn Connection to the database
+/// @param item_id ID of an item
+/// @param price address to save the resulting price
+/// @return Error object
+Error db_get_price_from_item(PGconn *conn, int32_t item_id, int32_t *price) {
+    char param_item_id[11] = {0};
+    snprintf(param_item_id, 11, "%d", item_id);
+    const char *select_params[] = {param_item_id};
+    PGresult *res = PQexecParams(conn, "SELECT price FROM items WHERE item_id = $1",
+            1, NULL, select_params, NULL, NULL, 0);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
+        PQclear(res);
+        return DATABASE_ERROR;
+    }
+    if (PQntuples(res) == 0) {
+        PQclear(res);
+        return ID_NOT_FOUND;
+    }
+
+    *price = atol(PQgetvalue(res, 0, 0));
+    PQclear(res);
+    return NOERROR;
+}
 
 int main(int argc, char **argv) {
 
@@ -91,46 +123,36 @@ int main(int argc, char **argv) {
         ItemCount item = item_counts[i];
 
         // check if order item exists
-        char param_item_id[11];
-        const int param_item_id_length = snprintf(param_item_id, 11, "%d", item.id);
-        const char *select_params[] = {param_item_id};
-        const int select_params_lengths[] = {param_item_id_length};
-        res = PQexecParams(conn, "SELECT price FROM items WHERE item_id = $1", 1, NULL, select_params, select_params_lengths, NULL, 0);
-        if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-            fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
-            die("SELECT failed");
-        }
-        if (PQntuples(res) == 0) {
+        int32_t price;
+        Error result = db_get_price_from_item(conn, item.id, &price);
+        if (result == DATABASE_ERROR) {
+            die("ERROR: Failed getting price");
+        } else if (result == ID_NOT_FOUND) {
             char msg[512];
-            snprintf(msg, 512, "Item not found %d", item.id);
+            snprintf(msg, 512, "ERROR: Item not found %d", item.id);
             die(msg);
+        } else if (result != NOERROR) {
+            die("ERROR: Unknown error when getting price");
         }
 
         char unit_price[11];
-        const int unit_price_length = snprintf(unit_price, 11, "%.10s", PQgetvalue(res, 0, 0));
-        PQclear(res);
+        snprintf(unit_price, 11, "%d", price);
         
 
         // create order item
-        char param_order_id[11];
-        const int param_order_id_length = snprintf(param_order_id, 11, "%d", item.id);
+        char param_item_id[11] = {0};
+        snprintf(param_item_id, 11, "%d", item.id);
 
         char param_quantity[11];
-        const int param_quantity_length = snprintf(param_quantity, 11, "%d", item.count);
+        snprintf(param_quantity, 11, "%d", item.count);
 
         const char *insert_params[] = {
-            param_order_id,
+            order_id,
             param_item_id,
             param_quantity,
             unit_price
         };
-        const int insert_params_lengths[] = {
-            param_order_id_length,
-            param_item_id_length,
-            param_quantity_length,
-            unit_price_length
-        };
-        res = PQexecParams(conn, "INSERT INTO order_items (order_id, item_id, quantity, unit_price) VALUES ($1, $2, $3, $4)", 4, NULL, insert_params, insert_params_lengths, NULL, 0);
+        res = PQexecParams(conn, "INSERT INTO order_items (order_id, item_id, quantity, unit_price) VALUES ($1, $2, $3, $4)", 4, NULL, insert_params, NULL, NULL, 0);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
             fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
             die("INSERT failed");
