@@ -4,8 +4,11 @@ LDFLAGS = `pkg-config --libs libpq` -fsanitize=undefined -fsanitize=address
 
 TARGETS = displayorders addorder
 
+
 SRC = $(wildcard src/*.c)
-OBJ = $(patsubst src/%.c,build/%.o,$(SRC))
+# Filter out source files that have the same base name as the targets
+DEPENDENCIES := $(filter-out $(addprefix src/, $(addsuffix .c, $(TARGETS))), $(SRC))
+OBJ = $(patsubst src/%.c,build/%.o,$(DEPENDENCIES))
 
 .PHONY: all debug clean
 
@@ -18,7 +21,7 @@ debug: $(TARGETS)
 
 # we assume that each executable has only one corresponding object file
 define build_exec =
-$(1): build/$(1).o
+$(1): build/$(1).o $(OBJ)
 	$(CC) $$^ -o $$@ $(LDFLAGS)
 endef
 
