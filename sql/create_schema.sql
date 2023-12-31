@@ -26,5 +26,6 @@ CREATE TABLE order_items (
     order_id INTEGER REFERENCES orders(order_id),
     item_id INTEGER REFERENCES items(item_id),
     quantity INTEGER NOT NULL,
-    unit_price INTEGER NOT NULL
+    unit_price INTEGER NOT NULL,
+    CONSTRAINT unique_order_item_order_id UNIQUE (order_id, order_item_id)
 );
