@@ -8,7 +8,7 @@
 
 // Function to print error message and exit
 void die(const char *message) {
-    fprintf(stderr, "%s\n", message);
+    fprintf(stderr, "ERROR: %s\n", message);
     exit(1);
 }
 
@@ -17,10 +17,19 @@ typedef struct {
     int count;
 } ItemCount;
 
+/// @brief Item belonging to an order
+typedef struct {
+    int32_t     id;         // item id
+    int32_t     count;      // amount of items ordered
+    int32_t     price;      // price of a single item
+    size_t      name_count; // length of name
+    char        name[255];  // item name
+} OrderItem;
+
 typedef enum {
     NOERROR = 0,
     DATABASE_ERROR = 1,
-    ID_NOT_FOUND = 2
+    ID_NOT_FOUND = 2,
 } Error;
 
 
@@ -67,11 +76,120 @@ Error db_get_price_from_item(PGconn *conn, int32_t item_id, int32_t *price) {
         return DATABASE_ERROR;
     }
     if (PQntuples(res) == 0) {
+        fprintf(stderr, "ERROR: item not found %d\r\n", item_id);
         PQclear(res);
         return ID_NOT_FOUND;
     }
 
     *price = atol(PQgetvalue(res, 0, 0));
+    PQclear(res);
+    return NOERROR;
+}
+
+
+/// @brief Inserts a new order and returns the order id
+/// @param conn Connection to the database
+/// @param order_id address to save the order ID of the new order
+/// @return Error object
+Error db_insert_order(PGconn *conn, int32_t *order_id) {
+    PGresult *res = PQexec(conn, "INSERT INTO orders (state_id) VALUES (1) RETURNING order_id");
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
+        PQclear(res);
+        return DATABASE_ERROR;
+    }
+    *order_id = atol(PQgetvalue(res, 0, 0));
+    PQclear(res);
+    return NOERROR;
+}
+
+/// @brief Adds an item to an existing order
+/// @param conn Connection to the database
+/// @param order_id ID of the order
+/// @param item_id  ID of the item
+/// @param item_quantity amount of items to add
+/// @param price price of the item
+/// @return Error object
+Error db_add_item_to_order(PGconn *conn, int32_t order_id, int32_t item_id, int32_t item_quantity, int32_t price) {
+    char param_order_id[11];
+    snprintf(param_order_id, 11, "%d", order_id);
+
+    char param_item_id[11];
+    snprintf(param_item_id, 11, "%d", item_id);
+
+    char param_quantity[11];
+    snprintf(param_quantity, 11, "%d", item_quantity);
+
+    char param_unit_price[11];
+    snprintf(param_unit_price, 11, "%d", price);
+
+    const char *insert_params[] = {
+        param_order_id,
+        param_item_id,
+        param_quantity,
+        param_unit_price
+    };
+    // TODO: if the item was already added to the order we need to update the amount
+    PGresult *res = PQexecParams(conn, "INSERT INTO order_items (order_id, item_id, quantity, unit_price) VALUES ($1, $2, $3, $4)", 4, NULL, insert_params, NULL, NULL, 0);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
+        PQclear(res);
+        return DATABASE_ERROR;
+    }
+    PQclear(res);
+    return NOERROR;
+}
+
+Error db_begin_transaction(PGconn *conn) {
+    PGresult *res = PQexec(conn, "BEGIN");
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
+        PQclear(res);
+        return DATABASE_ERROR;
+    }
+    PQclear(res);
+    return NOERROR;
+}
+
+Error db_commit_transaction(PGconn *conn) {
+    PGresult *res = PQexec(conn, "COMMIT");
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
+        return DATABASE_ERROR;
+    }
+    PQclear(res);
+    return NOERROR;
+}
+
+/// @brief Get all items of an order.
+/// @param conn Connection to the database
+/// @param order_id ID of the order
+/// @param order_items address of an array to store order items
+/// @param order_items_length address to save the amount of resulting order items
+/// @param max_order_items maximum amount of order items to copy into the destination array
+/// @return Error object
+Error db_get_order_item_by_order_id(PGconn *conn, int32_t order_id, OrderItem *order_items, int *order_items_length, int max_order_items) {
+    char param_order_id[11];
+    snprintf(param_order_id, 11, "%d", order_id);
+
+    const char *select_query_params[] = { param_order_id };
+
+    PGresult *res = PQexecParams(conn, "SELECT oi.item_id, i.name, oi.quantity, i.price FROM order_items oi JOIN items i ON oi.item_id = i.item_id WHERE oi.order_id = $1", 1, NULL, select_query_params, NULL, NULL, 0);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
+        PQclear(res);
+        return DATABASE_ERROR;
+    }
+    int result_count = PQntuples(res);
+    max_order_items = max_order_items <= result_count ? max_order_items : result_count;
+    for (int i = 0; i < max_order_items; i++) {
+        order_items[i].id = atol(PQgetvalue(res, i, 0));
+        size_t name_count = snprintf(order_items[i].name, 255, "%s", PQgetvalue(res, i, 1));
+        order_items[i].name_count = name_count;
+        order_items[i].count = atol(PQgetvalue(res, i, 2));
+        order_items[i].price = atol(PQgetvalue(res, i, 3));
+    }
+    *order_items_length = max_order_items;
     PQclear(res);
     return NOERROR;
 }
@@ -97,26 +215,18 @@ int main(int argc, char **argv) {
 
     PGconn *conn = PQconnectdb("dbname=shopdb user=shopuser password=shopuser host=localhost port=5432");
     if (PQstatus(conn) != CONNECTION_OK) {
-        die("Connection failed");
+        die("cannot create connection");
     }
 
-    // Start transaction
-    PGresult *res = PQexec(conn, "BEGIN");
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
-        die("BEGIN failed");
+    if (db_begin_transaction(conn)) {
+        die("cannot begin transaction");
     }
-    PQclear(res);
 
     // Create new order
-    res = PQexec(conn, "INSERT INTO orders (state_id) VALUES (1) RETURNING order_id");
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
-        die("INSERT failed");
+    int32_t order_id;
+    if (db_insert_order(conn, &order_id)) {
+        die("cannot insert new order");
     }
-    char order_id[255];
-    const int order_id_length = snprintf(order_id, 254, "%.254s", PQgetvalue(res, 0, 0));
-    PQclear(res);
 
     // Create order items
     for (int i = 0; i < item_counts_length; i++) {
@@ -124,66 +234,35 @@ int main(int argc, char **argv) {
 
         // check if order item exists
         int32_t price;
-        Error result = db_get_price_from_item(conn, item.id, &price);
-        if (result == DATABASE_ERROR) {
-            die("ERROR: Failed getting price");
-        } else if (result == ID_NOT_FOUND) {
-            char msg[512];
-            snprintf(msg, 512, "ERROR: Item not found %d", item.id);
-            die(msg);
-        } else if (result != NOERROR) {
-            die("ERROR: Unknown error when getting price");
+        if (db_get_price_from_item(conn, item.id, &price)) {
+            die("cannot get price");
         }
-
-        char unit_price[11];
-        snprintf(unit_price, 11, "%d", price);
-        
 
         // create order item
-        char param_item_id[11] = {0};
-        snprintf(param_item_id, 11, "%d", item.id);
-
-        char param_quantity[11];
-        snprintf(param_quantity, 11, "%d", item.count);
-
-        const char *insert_params[] = {
-            order_id,
-            param_item_id,
-            param_quantity,
-            unit_price
-        };
-        res = PQexecParams(conn, "INSERT INTO order_items (order_id, item_id, quantity, unit_price) VALUES ($1, $2, $3, $4)", 4, NULL, insert_params, NULL, NULL, 0);
-        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-            fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
-            die("INSERT failed");
+        if (db_add_item_to_order(conn, order_id, item.id, item.count, price)) {
+            char msg[512];
+            snprintf(msg, 512, "cannot add item \"%d\" to order \"%d\"", item.id, order_id);
+            die(msg);
         }
-        PQclear(res);
     }
 
-    // Commit transaction
-    res = PQexec(conn, "COMMIT");
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
-        die("COMMIT failed");
+    if (db_commit_transaction(conn)) {
+        die("cannot commit transaction");
     }
-    PQclear(res);
 
     // Print order
-    printf("Order ID: %s\n", order_id);
-    const char *select_query_params[] = { order_id };
-    const int select_query_lengths[] = { order_id_length };
-    res = PQexecParams(conn, "SELECT i.name, oi.quantity, i.price FROM order_items oi JOIN items i ON oi.item_id = i.item_id WHERE oi.order_id = $1", 1, NULL, select_query_params, select_query_lengths, NULL, 0);
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
-        die("SELECT failed");
+    printf("Order ID: %d\n", order_id);
+    OrderItem order_items[50];
+    int order_items_count;
+    if (db_get_order_item_by_order_id(conn, order_id, order_items, &order_items_count, 50)) {
+        die("cannot get order items");
     }
     printf("Items:\n");
-    for (int i = 0; i < PQntuples(res); i++) {
-        printf("  %s (%d x %d)\n", PQgetvalue(res, i, 0), atoi(PQgetvalue(res, i, 1)), atoi(PQgetvalue(res, i, 2)));
+    for (int i = 0; i < order_items_count; i++) {
+        printf("  %s (%d x %d)\n", order_items[i].name, order_items[i].count, order_items[i].price);
     }
 
     // Clean up
-    PQclear(res);
     PQfinish(conn);
     return 0;
 }
