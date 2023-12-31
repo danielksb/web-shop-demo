@@ -26,11 +26,12 @@ typedef struct {
     char        name[255];  // item name
 } OrderItem;
 
+/// @brief Result of database operation
 typedef enum {
-    NOERROR = 0,
-    DATABASE_ERROR = 1,
-    ID_NOT_FOUND = 2,
-} Error;
+    SUCCESS = 0,            // action was successful
+    ERROR_DATABASE = 1,     // a database error occurred
+    ERROR_NO_RESULT = 2,    // no result available although one was expected
+} DatabaseResult;
 
 
 int find_item_count(int target, ItemCount lst[], int len) {
@@ -64,7 +65,7 @@ void count_item_ids(ItemCount* counts, int *num_counts, int max_counts, int item
 /// @param item_id ID of an item
 /// @param price address to save the resulting price
 /// @return Error object
-Error db_get_price_from_item(PGconn *conn, int32_t item_id, int32_t *price) {
+DatabaseResult db_get_price_from_item(PGconn *conn, int32_t item_id, int32_t *price) {
     char param_item_id[11] = {0};
     snprintf(param_item_id, 11, "%d", item_id);
     const char *select_params[] = {param_item_id};
@@ -73,17 +74,17 @@ Error db_get_price_from_item(PGconn *conn, int32_t item_id, int32_t *price) {
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
         PQclear(res);
-        return DATABASE_ERROR;
+        return ERROR_DATABASE;
     }
     if (PQntuples(res) == 0) {
         fprintf(stderr, "ERROR: item not found %d\r\n", item_id);
         PQclear(res);
-        return ID_NOT_FOUND;
+        return ERROR_NO_RESULT;
     }
 
     *price = atol(PQgetvalue(res, 0, 0));
     PQclear(res);
-    return NOERROR;
+    return SUCCESS;
 }
 
 
@@ -91,16 +92,16 @@ Error db_get_price_from_item(PGconn *conn, int32_t item_id, int32_t *price) {
 /// @param conn Connection to the database
 /// @param order_id address to save the order ID of the new order
 /// @return Error object
-Error db_insert_order(PGconn *conn, int32_t *order_id) {
+DatabaseResult db_insert_order(PGconn *conn, int32_t *order_id) {
     PGresult *res = PQexec(conn, "INSERT INTO orders (state_id) VALUES (1) RETURNING order_id");
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
         PQclear(res);
-        return DATABASE_ERROR;
+        return ERROR_DATABASE;
     }
     *order_id = atol(PQgetvalue(res, 0, 0));
     PQclear(res);
-    return NOERROR;
+    return SUCCESS;
 }
 
 /// @brief Adds an item to an existing order
@@ -110,7 +111,7 @@ Error db_insert_order(PGconn *conn, int32_t *order_id) {
 /// @param item_quantity amount of items to add
 /// @param price price of the item
 /// @return Error object
-Error db_add_item_to_order(PGconn *conn, int32_t order_id, int32_t item_id, int32_t item_quantity, int32_t price) {
+DatabaseResult db_add_item_to_order(PGconn *conn, int32_t order_id, int32_t item_id, int32_t item_quantity, int32_t price) {
     char param_order_id[11];
     snprintf(param_order_id, 11, "%d", order_id);
 
@@ -134,31 +135,31 @@ Error db_add_item_to_order(PGconn *conn, int32_t order_id, int32_t item_id, int3
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
         PQclear(res);
-        return DATABASE_ERROR;
+        return ERROR_DATABASE;
     }
     PQclear(res);
-    return NOERROR;
+    return SUCCESS;
 }
 
-Error db_begin_transaction(PGconn *conn) {
+DatabaseResult db_begin_transaction(PGconn *conn) {
     PGresult *res = PQexec(conn, "BEGIN");
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
         PQclear(res);
-        return DATABASE_ERROR;
+        return ERROR_DATABASE;
     }
     PQclear(res);
-    return NOERROR;
+    return SUCCESS;
 }
 
-Error db_commit_transaction(PGconn *conn) {
+DatabaseResult db_commit_transaction(PGconn *conn) {
     PGresult *res = PQexec(conn, "COMMIT");
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
-        return DATABASE_ERROR;
+        return ERROR_DATABASE;
     }
     PQclear(res);
-    return NOERROR;
+    return SUCCESS;
 }
 
 /// @brief Get all items of an order.
@@ -168,7 +169,7 @@ Error db_commit_transaction(PGconn *conn) {
 /// @param order_items_length address to save the amount of resulting order items
 /// @param max_order_items maximum amount of order items to copy into the destination array
 /// @return Error object
-Error db_get_order_item_by_order_id(PGconn *conn, int32_t order_id, OrderItem *order_items, int *order_items_length, int max_order_items) {
+DatabaseResult db_get_order_item_by_order_id(PGconn *conn, int32_t order_id, OrderItem *order_items, int *order_items_length, int max_order_items) {
     char param_order_id[11];
     snprintf(param_order_id, 11, "%d", order_id);
 
@@ -178,7 +179,7 @@ Error db_get_order_item_by_order_id(PGconn *conn, int32_t order_id, OrderItem *o
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         fprintf(stderr, "ERROR: %s\r\n", PQresultErrorMessage(res));
         PQclear(res);
-        return DATABASE_ERROR;
+        return ERROR_DATABASE;
     }
     int result_count = PQntuples(res);
     max_order_items = max_order_items <= result_count ? max_order_items : result_count;
@@ -191,7 +192,7 @@ Error db_get_order_item_by_order_id(PGconn *conn, int32_t order_id, OrderItem *o
     }
     *order_items_length = max_order_items;
     PQclear(res);
-    return NOERROR;
+    return SUCCESS;
 }
 
 int main(int argc, char **argv) {
