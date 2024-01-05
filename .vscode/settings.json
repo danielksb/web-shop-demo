@@ -9,6 +9,10 @@
     "files.associations": {
         "stdlib.h": "c",
         "stdio.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "strings.h": "c",
+        "alloc_arena.h": "c",
+        "signal.h": "c",
+        "server.h": "c"
     }
 }

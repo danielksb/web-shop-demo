@@ -3,3 +3,5 @@ addorder
 addorder.exe
 displayorders
 displayorders.exe
+echo_server
+echo_server.exe
