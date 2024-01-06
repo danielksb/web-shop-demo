@@ -13,6 +13,8 @@
         "strings.h": "c",
         "alloc_arena.h": "c",
         "signal.h": "c",
-        "server.h": "c"
+        "server.h": "c",
+        "time.h": "c",
+        "stdint.h": "c"
     }
 }

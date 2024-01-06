@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -g3 -fsanitize=undefined -fsanitize=address
 LDFLAGS = `pkg-config --libs libpq` -fsanitize=undefined -fsanitize=address
 
-TARGETS = displayorders addorder echo_server
+TARGETS = displayorders addorder echo_server shop_server client
 
 
 SRC = $(wildcard src/*.c)

@@ -5,3 +5,7 @@ displayorders
 displayorders.exe
 echo_server
 echo_server.exe
+shop_server
+shop_server.exe
+client
+client.exe
