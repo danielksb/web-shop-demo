@@ -57,5 +57,7 @@ int main(int argc, char *argv[])
         printf("ERROR: cannot initalize mutex\r\n");
         return 1;
     }
-    server_loop(&server, server_port);
+    ServerError error = server_loop(&server, server_port);
+    fprintf(stderr, "ERROR: cannot enter server loop: %s\r\n", error.msg);
+    return 1;
 }
