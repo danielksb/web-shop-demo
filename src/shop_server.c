@@ -18,11 +18,12 @@
 /// @return 0 on success
 int send_error_response(int client_socket, char *err_msg)
 {
+    printf("INFO: send error response \"%s\"\r\n", err_msg);
     ResponseHeader res_header = {
         .magicnum = API_MAGIC_NUM,
         .version = 1,
         .response_id = RESPONSE_ERROR,
-        .payload_size = sizeof(err_msg)};
+        .payload_size = (strlen(err_msg) + 1) * sizeof(char)};
     if (send(client_socket, &res_header, sizeof(res_header), 0) < 0)
     {
         char systemcall_err_msg[512];
@@ -30,12 +31,15 @@ int send_error_response(int client_socket, char *err_msg)
         fprintf(stderr, "ERROR: cannot send error response %s\r\n", systemcall_err_msg);
         return EXIT_FAILURE;
     }
-    if (send(client_socket, &err_msg, sizeof(err_msg), 0) < 0)
+    if (res_header.payload_size > 0)
     {
-        char systemcall_err_msg[512];
-        strerror_r(errno, systemcall_err_msg, sizeof(systemcall_err_msg));
-        fprintf(stderr, "ERROR: cannot send error response %s\r\n", systemcall_err_msg);
-        return EXIT_FAILURE;
+        if (send(client_socket, err_msg, res_header.payload_size, 0) < 0)
+        {
+            char systemcall_err_msg[512];
+            strerror_r(errno, systemcall_err_msg, sizeof(systemcall_err_msg));
+            fprintf(stderr, "ERROR: cannot send error response %s\r\n", systemcall_err_msg);
+            return EXIT_FAILURE;
+        }
     }
     return EXIT_SUCCESS;
 }
@@ -49,7 +53,7 @@ int send_display_order_response(int client_socket)
     ResponseHeader res_header = {
         .magicnum = API_MAGIC_NUM,
         .version = 1,
-        .response_id = REQUEST_DISPLAY_ORDERS,
+        .response_id = RESPONSE_DISPLAY_ORDERS,
         .payload_size = 0};
     if (send(client_socket, &res_header, sizeof(res_header), 0) < 0)
     {

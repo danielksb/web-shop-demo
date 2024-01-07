@@ -62,6 +62,18 @@ int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
         }
         printf("DEBUG: response id: %d\r\n", res_header->response_id);
         printf("DEBUG: response payload: %d\r\n", res_header->payload_size);
+        if (res_header->response_id == RESPONSE_ERROR) {
+            fprintf(stderr, "ERROR: server error\r\n");
+            if (res_header->payload_size > 0) {
+                char server_err_msg[res_header->payload_size / sizeof(char)];
+                if ((n = recv(client_fd, server_err_msg, res_header->payload_size, 0)) > 0)
+                {
+                    fprintf(stderr, "ERROR: %s\r\n", server_err_msg);
+                }
+            }
+            close(client_fd);
+            exit(1);
+        }
     }
 
     close(client_fd);
@@ -79,6 +91,21 @@ int display_order()
     ResponseHeader res_header = {0};
     if (exec_request(&req_header, &res_header) != EXIT_SUCCESS) {
         fprintf(stderr, "ERROR: display order request failed\r\n");
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+int send_invalid_request() {
+    RequestHeader req_header = {
+        .magicnum = 0, // invalid magic number
+        .version = 1,
+        .request_id = REQUEST_DISPLAY_ORDERS,
+        .payload_size = 0
+    };
+    ResponseHeader res_header = {0};
+    if (exec_request(&req_header, &res_header) != EXIT_SUCCESS) {
+        fprintf(stderr, "ERROR: request failed\r\n");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -112,6 +139,10 @@ int main(int argc, char *argv[])
                 return 1;
             }
         }
+    }
+    else if (strcmp(argv[1], "error") == 0) 
+    {
+        return send_invalid_request();
     }
     else
     {
