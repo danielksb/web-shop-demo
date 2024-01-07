@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -g3 -fsanitize=undefined -fsanitize=address
-LDFLAGS = `pkg-config --libs libpq` -fsanitize=undefined -fsanitize=address
+CFLAGS = -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread
+LDFLAGS = `pkg-config --libs libpq` -pthread
 
 TARGETS = displayorders addorder echo_server shop_server client
 
@@ -22,7 +22,7 @@ debug: $(TARGETS)
 # we assume that each executable has only one corresponding object file
 define build_exec =
 $(1): build/$(1).o $(OBJ)
-	$(CC) $$^ -o $$@ $(LDFLAGS)
+	$(CC) $$^ -o $$@ $$(LDFLAGS)
 endef
 
 $(foreach target,$(TARGETS),$(eval $(call build_exec,$(target))))
