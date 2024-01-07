@@ -2,6 +2,8 @@
 
 Welcome to the Web Shop in C11 project! This is a personal endeavor designed to deepen understanding in C11, Unix socket programming, C error and memory handling, and system programming in general. Please be aware that this project is purely a hobby undertaking and is neither intended for commercial use nor positioned as a practical open-source application. The primary goal is to foster a hands-on learning experience in low-level programming concepts.
 
+The server and the client employ their own protocol rather than HTTP, adding an extra layer of interest to the project. Deviating from a battle-tested standard provides a refreshing vintage vibe and simplifies certain aspects while introducing challenges in other areas.
+
 ## Build Instructions
 
 To build the project, use the following commands:
@@ -39,8 +41,6 @@ To start the client, use:
 ```bash
 ./client
 ```
-
-Please note that the server and client communicate using their proprietary protocol, not HTTP.
 
 ## Contributions
 
