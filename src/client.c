@@ -16,8 +16,9 @@
 /// @brief Executes a request
 /// @param req_header address of the request header to be sent
 /// @param res_header adress of the response header which will be set on success
+/// @param payload_cb callback function for handling payload data, returns EXIT_SUCCESS on success
 /// @return EXIT_SUCCESS on success
-int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
+int exec_request(RequestHeader *req_header, ResponseHeader *res_header, int (*payload_cb)(uint8_t *payload, u_int32_t payload_size)) {
     // create socket
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd < 0)
@@ -63,6 +64,7 @@ int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
         }
         printf("DEBUG: response id: %d\r\n", res_header->response_id);
         printf("DEBUG: response payload: %d\r\n", res_header->payload_size);
+        // always handle error response
         if (res_header->response_id == RESPONSE_ERROR) {
             fprintf(stderr, "ERROR: received error response from server\r\n");
             if (res_header->payload_size > 0) {
@@ -74,39 +76,54 @@ int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
             }
             close(client_fd);
             return EXIT_FAILURE;
-        } else if (res_header->response_id == RESPONSE_DISPLAY_ORDERS) {
-            printf("DEBUG: received display orders response\r\n");
+        } else {
+            // handle response payload
             if (res_header->payload_size > 0) {
-                printf("DEBUG: payload size %d\r\n", res_header->payload_size);
-                size_t order_items_count = res_header->payload_size / sizeof(FullOrderItem); 
-                FullOrderItem order_items[order_items_count];
-                if ((n = recv(client_fd, order_items, res_header->payload_size, 0)) < 0)
+                uint8_t payload_buffer[res_header->payload_size];
+                if ((n = recv(client_fd, payload_buffer, res_header->payload_size, 0)) < 0)
                 {
-                    perror("ERROR: cannot receive display orders payload");
+                    perror("ERROR: cannot receive payload");
+                    close(client_fd);
+                    return EXIT_FAILURE;
                 }
-                printf("%-20s", "order_id");
-                printf("%-20s", "order_date");
-                printf("%-20s", "order_status");
-                printf("%-20s", "order_item_id");
-                printf("%-20s", "item_name");
-                printf("%-20s", "quantity");
-                printf("\n");
-                for (size_t i = 0; i < order_items_count; i++) {
-                    printf("%-20d", order_items[i].order.id);
-                    printf("%-20s", order_items[i].order.date);
-                    printf("%-20s", order_items[i].order.status);
-                    printf("%-20d", order_items[i].order_item.id);
-                    printf("%-20s", order_items[i].order_item.name);
-                    printf("%-20d", order_items[i].order_item.price);
-                    printf("\n");
+                if (payload_cb) {
+                    if (payload_cb(payload_buffer, res_header->payload_size) != EXIT_SUCCESS) {
+                        close(client_fd);
+                        return EXIT_FAILURE;
+                    }
                 }
+            } else if (res_header->payload_size >= MAX_PAYLOAD_SIZE) {
+                fprintf(stderr, "ERROR: payload too large\r\n");
+                close(client_fd);
+                return EXIT_FAILURE;
             }
-            close(client_fd);
-            return EXIT_FAILURE;
         }
     }
 
     close(client_fd);
+    return EXIT_SUCCESS;
+}
+
+int handle_display_order_response(uint8_t *payload, uint32_t payload_size) {
+    size_t order_items_count = payload_size / sizeof(FullOrderItem);
+    FullOrderItem *order_items = (FullOrderItem*)payload;
+    printf("DEBUG: received display orders response with %ld items\r\n", order_items_count);
+    printf("%-20s", "order_id");
+    printf("%-20s", "order_date");
+    printf("%-20s", "order_status");
+    printf("%-20s", "order_item_id");
+    printf("%-20s", "item_name");
+    printf("%-20s", "quantity");
+    printf("\n");
+    for (size_t i = 0; i < order_items_count; i++) {
+        printf("%-20d", order_items[i].order.id);
+        printf("%-20s", order_items[i].order.date);
+        printf("%-20s", order_items[i].order.status);
+        printf("%-20d", order_items[i].order_item.id);
+        printf("%-20s", order_items[i].order_item.name);
+        printf("%-20d", order_items[i].order_item.price);
+        printf("\n");
+    }
     return EXIT_SUCCESS;
 }
 
@@ -119,7 +136,7 @@ int send_display_order_request()
         .payload_size = 0
     };
     ResponseHeader res_header = {0};
-    if (exec_request(&req_header, &res_header) != EXIT_SUCCESS) {
+    if (exec_request(&req_header, &res_header, handle_display_order_response) != EXIT_SUCCESS) {
         fprintf(stderr, "ERROR: display order request failed\r\n");
         return EXIT_FAILURE;
     }
@@ -134,7 +151,7 @@ int send_invalid_request() {
         .payload_size = 0
     };
     ResponseHeader res_header = {0};
-    if (exec_request(&req_header, &res_header) != EXIT_SUCCESS) {
+    if (exec_request(&req_header, &res_header, NULL) != EXIT_SUCCESS) {
         fprintf(stderr, "ERROR: request failed\r\n");
         return EXIT_FAILURE;
     }

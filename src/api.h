@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define API_MAGIC_NUM 64
+#define MAX_PAYLOAD_SIZE 1024*1024*20
 
 typedef struct
 {
