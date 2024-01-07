@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "api.h"
+#include "types.h"
 
 // TODO: configure server connection
 #define SERVER "localhost"
@@ -15,14 +16,14 @@
 /// @brief Executes a request
 /// @param req_header address of the request header to be sent
 /// @param res_header adress of the response header which will be set on success
-/// @return 0 on success
+/// @return EXIT_SUCCESS on success
 int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
     // create socket
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd < 0)
     {
         perror("ERROR: creating socket");
-        exit(1);
+        return EXIT_FAILURE;
     }
     // Connect to server
     struct sockaddr_in server_address;
@@ -33,7 +34,7 @@ int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
     {
         perror("ERROR: connecting to server");
         close(client_fd);
-        exit(1);
+        return EXIT_FAILURE;
     }
 
     // Send message to server
@@ -41,7 +42,7 @@ int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
     {
         perror("ERROR: sending message");
         close(client_fd);
-        exit(1);
+        return EXIT_FAILURE;
     }
 
     // Receive message from server
@@ -52,18 +53,18 @@ int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
         {
             fprintf(stderr, "ERROR: received incorrect data, expected %ld bytes, but got %d\r\n", sizeof(res_header), n);
             close(client_fd);
-            exit(1);
+            return EXIT_FAILURE;
         }
         if (res_header->magicnum != API_MAGIC_NUM)
         {
             fprintf(stderr, "ERROR: received invalid magic number, expected %d, but got %d\r\n", API_MAGIC_NUM, res_header->magicnum);
             close(client_fd);
-            exit(1);
+            return EXIT_FAILURE;
         }
         printf("DEBUG: response id: %d\r\n", res_header->response_id);
         printf("DEBUG: response payload: %d\r\n", res_header->payload_size);
         if (res_header->response_id == RESPONSE_ERROR) {
-            fprintf(stderr, "ERROR: server error\r\n");
+            fprintf(stderr, "ERROR: received error response from server\r\n");
             if (res_header->payload_size > 0) {
                 char server_err_msg[res_header->payload_size / sizeof(char)];
                 if ((n = recv(client_fd, server_err_msg, res_header->payload_size, 0)) > 0)
@@ -72,15 +73,44 @@ int exec_request(RequestHeader *req_header, ResponseHeader *res_header) {
                 }
             }
             close(client_fd);
-            exit(1);
+            return EXIT_FAILURE;
+        } else if (res_header->response_id == RESPONSE_DISPLAY_ORDERS) {
+            printf("DEBUG: received display orders response\r\n");
+            if (res_header->payload_size > 0) {
+                printf("DEBUG: payload size %d\r\n", res_header->payload_size);
+                size_t order_items_count = res_header->payload_size / sizeof(FullOrderItem); 
+                FullOrderItem order_items[order_items_count];
+                if ((n = recv(client_fd, order_items, res_header->payload_size, 0)) < 0)
+                {
+                    perror("ERROR: cannot receive display orders payload");
+                }
+                printf("%-20s", "order_id");
+                printf("%-20s", "order_date");
+                printf("%-20s", "order_status");
+                printf("%-20s", "order_item_id");
+                printf("%-20s", "item_name");
+                printf("%-20s", "quantity");
+                printf("\n");
+                for (size_t i = 0; i < order_items_count; i++) {
+                    printf("%-20d", order_items[i].order.id);
+                    printf("%-20s", order_items[i].order.date);
+                    printf("%-20s", order_items[i].order.status);
+                    printf("%-20d", order_items[i].order_item.id);
+                    printf("%-20s", order_items[i].order_item.name);
+                    printf("%-20d", order_items[i].order_item.price);
+                    printf("\n");
+                }
+            }
+            close(client_fd);
+            return EXIT_FAILURE;
         }
     }
 
     close(client_fd);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-int display_order()
+int send_display_order_request()
 {
     RequestHeader req_header = {
         .magicnum = API_MAGIC_NUM,
@@ -131,7 +161,7 @@ int main(int argc, char *argv[])
         {
             if (strcmp(argv[2], "list") == 0)
             {
-                return display_order();
+                return send_display_order_request();
             }
             else
             {

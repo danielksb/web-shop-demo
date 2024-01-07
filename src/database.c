@@ -118,7 +118,7 @@ int db_get_order_item_by_order_id(PGconn *conn, int32_t order_id, OrderItem *ord
     return EXIT_SUCCESS;
 }
 
-int db_get_order_items_latest(PGconn *conn, FullOrderItem *items, int *items_length, int max_items, Error *error) {
+int db_get_order_items_latest(PGconn *conn, FullOrderItem *items, int max_item_count, Error *error) {
     char stmt[512];
     snprintf(stmt, 512, "SELECT"
         "  o.order_id,"
@@ -133,14 +133,14 @@ int db_get_order_items_latest(PGconn *conn, FullOrderItem *items, int *items_len
         " JOIN order_states os ON os.state_id = o.state_id"
         " JOIN items i ON i.item_id = oi.item_id"
         " ORDER BY o.order_date DESC"
-        " LIMIT %d;", max_items);
+        " LIMIT %d;", max_item_count);
     PGresult *res = PQexec(conn, stmt);
 
     // Check if the query was successful
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         db_set_error(error, res);
         PQclear(res);
-        return EXIT_FAILURE;
+        return -1;
     }
 
     int rows = PQntuples(res);
@@ -155,8 +155,7 @@ int db_get_order_items_latest(PGconn *conn, FullOrderItem *items, int *items_len
         items[i].order_item.count = atol(PQgetvalue(res, i, 5));
         items[i].order_item.price = atol(PQgetvalue(res, i, 6));
     }
-    *items_length = rows;
 
     PQclear(res);
-    return EXIT_SUCCESS;
+    return rows;
 }

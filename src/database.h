@@ -49,10 +49,9 @@ int db_get_order_item_by_order_id(PGconn *conn, int32_t order_id, OrderItem *ord
 /// @brief Get the latest order items and their orders.
 /// @param conn Connection to the database
 /// @param order_items address of an array to store order items
-/// @param order_items_length address to save the amount of resulting order items
 /// @param max_order_items maximum amount of order items to copy into the destination array
 /// @param error address of error object to set an error message on failure
-/// @return EXIT_SUCCESS on success
-int db_get_order_items_latest(PGconn *conn, FullOrderItem *order_items, int *order_items_length, int max_order_items, Error *error);
+/// @return -1 on error or actual number of order items written to the order_items
+int db_get_order_items_latest(PGconn *conn, FullOrderItem *order_items, int max_order_items, Error *error);
 
 #endif

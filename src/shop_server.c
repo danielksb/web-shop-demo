@@ -6,9 +6,12 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <libpq-fe.h>
 
 #include "server.h"
 #include "api.h"
+#include "error.h"
+#include "database.h"
 
 #define DEFAULT_SERVER_PORT 8080
 
@@ -49,19 +52,45 @@ int send_error_response(int client_socket, char *err_msg)
 /// @return 0 on success
 int send_display_order_response(int client_socket)
 {
+    Error error = {0};
     printf("DEBUG: display orders\r\n");
+    // TODO: read connection data from configuration
+    PGconn *conn = PQconnectdb("dbname=shopdb user=shopuser password=shopuser host=localhost port=5432");
+    if (PQstatus(conn) != CONNECTION_OK) {
+        send_error_response(client_socket, "internal server error");
+        return EXIT_FAILURE;
+    }
+    int order_item_count = 10;
+    FullOrderItem order_items[order_item_count];
+    order_item_count = db_get_order_items_latest(conn, order_items, order_item_count, &error);
+    if (order_item_count < 0) {
+        fprintf(stderr, "ERROR: failed getting latest order items: %s\r\n", error.msg);
+        send_error_response(client_socket, "internal server error");
+        PQfinish(conn);
+        return EXIT_FAILURE;
+    }
+    PQfinish(conn);
+    printf("DEBUG: found %d order items\r\n", order_item_count);
     ResponseHeader res_header = {
         .magicnum = API_MAGIC_NUM,
         .version = 1,
         .response_id = RESPONSE_DISPLAY_ORDERS,
-        .payload_size = 0
+        .payload_size = sizeof(order_items[0]) * order_item_count
     };
     if (send(client_socket, &res_header, sizeof(res_header), 0) < 0)
     {
         char systemcall_err_msg[512];
         strerror_r(errno, systemcall_err_msg, sizeof(systemcall_err_msg));
-        fprintf(stderr, "ERROR: cannot send display order response %s\r\n", systemcall_err_msg);
+        fprintf(stderr, "ERROR: cannot send 'display order' response header %s\r\n", systemcall_err_msg);
         return EXIT_FAILURE;
+    }
+    if (order_item_count > 0) {
+        if (send(client_socket, order_items, res_header.payload_size, 0) < 0) {
+            char systemcall_err_msg[512];
+            strerror_r(errno, systemcall_err_msg, sizeof(systemcall_err_msg));
+            fprintf(stderr, "ERROR: cannot send 'display order' response payload: %s\r\n", systemcall_err_msg);
+            return EXIT_FAILURE;
+        }
     }
     return EXIT_SUCCESS;
 }
