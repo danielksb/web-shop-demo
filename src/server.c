@@ -57,7 +57,7 @@ static void *handle_request_loop(void *arg)
 /// @param listeningSocket address to store the socket file descriptor
 /// @param error Error structure to store the error message in case of an failure
 /// @return EXIT_SUCCESS on success, EXIT_FAILURE on a failure
-static int setup_listening_socket(int port, int *listeningSocket, Error *error) {
+static int setup_listening_socket(uint16_t port, int *listeningSocket, Error *error) {
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
         strerror_r(errno, error->msg, sizeof(error->msg));
@@ -72,8 +72,7 @@ static int setup_listening_socket(int port, int *listeningSocket, Error *error) 
         return EXIT_FAILURE;
     }
 
-    struct sockaddr_in srv_addr;
-    bzero(&srv_addr, sizeof(srv_addr));
+    struct sockaddr_in srv_addr = {0};
     srv_addr.sin_family = AF_INET;
     srv_addr.sin_port = htons(port);
     srv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -103,7 +102,7 @@ int server_init(Server *server, void (*client_cb)(int client_socket)) {
     return pthread_mutex_init(&server->mlock, 0);
 }
 
-Error server_loop(Server *server, int server_port) {
+Error server_loop(Server *server, uint16_t server_port) {
     Error error = {0};
     signal(SIGINT, server_exit);
 

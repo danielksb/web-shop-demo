@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include <stdarg.h>
+#include <inttypes.h>
 
 #include "error.h"
 
@@ -27,6 +28,6 @@ int server_init(Server *server, void (*client_cb)(int client_socket));
 /// @param server initalized server struct
 /// @param server_port listing port
 /// @return Error description
-Error server_loop(Server *server, int server_port);
+Error server_loop(Server *server, uint16_t server_port);
 
 #endif

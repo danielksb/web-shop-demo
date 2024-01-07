@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define DEFAULT_SERVER_PORT 8080
 
@@ -45,10 +46,10 @@ void handle_client_echo(int client_socket) {
 
 int main(int argc, char *argv[])
 {
-    int server_port;
+    u_int16_t server_port;
 
     if (argc > 1)
-      server_port = atoi(argv[1]);
+      server_port = (u_int16_t)atoi(argv[1]); // TODO: handle possible overflow
     else
       server_port = DEFAULT_SERVER_PORT;
 

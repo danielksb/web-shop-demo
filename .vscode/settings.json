@@ -1,10 +1,25 @@
 {
     "makefile.launchConfigurations": [
         {
-            "cwd": "/mnt/c/projects/playground/service-comparison",
-            "binaryPath": "/mnt/c/projects/playground/service-comparison/cshop",
+            "cwd": "/home/dank/projects/web-shop-demo",
+            "binaryPath": "/home/dank/projects/web-shop-demo/client",
+            "binaryArgs": []
+        },
+        {
+            "cwd": "/home/dank/projects/web-shop-demo",
+            "binaryPath": "/home/dank/projects/web-shop-demo/shop_server",
             "binaryArgs": []
         }
+    ],
+    "makefile.compileCommandsPath": ".vscode/compile_commands.json",
+    "makefile.configurations": [
+        {
+            "name": "MyConfiguration",
+            "problemMatchers": [
+                "$gcc"
+            ],
+            "makeArgs": []
+        },
     ],
     "files.associations": {
         "stdlib.h": "c",
@@ -16,6 +31,8 @@
         "server.h": "c",
         "time.h": "c",
         "stdint.h": "c",
-        "error.h": "c"
-    }
+        "error.h": "c",
+        "inttypes.h": "c"
+    },
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json"
 }

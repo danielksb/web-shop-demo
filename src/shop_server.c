@@ -26,7 +26,8 @@ int send_error_response(int client_socket, char *err_msg)
         .magicnum = API_MAGIC_NUM,
         .version = 1,
         .response_id = RESPONSE_ERROR,
-        .payload_size = (strlen(err_msg) + 1) * sizeof(char)};
+        .payload_size = (strlen(err_msg) + 1) * sizeof(char)   // TODO: handle possible overflow
+    };
     if (send(client_socket, &res_header, sizeof(res_header), 0) < 0)
     {
         char systemcall_err_msg[512];
@@ -159,10 +160,10 @@ void handle_shop_request(int client_socket)
 
 int main(int argc, char *argv[])
 {
-    int server_port;
+    u_int16_t server_port;
 
     if (argc > 1)
-        server_port = atoi(argv[1]);
+        server_port = (u_int16_t)atoi(argv[1]); // TODO: handle possible overflow
     else
         server_port = DEFAULT_SERVER_PORT;
 

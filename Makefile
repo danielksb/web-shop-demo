@@ -2,6 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread
 LDFLAGS = `pkg-config --libs libpq` -pthread
 
+# list of all executable files
 TARGETS = displayorders addorder echo_server shop_server client
 
 

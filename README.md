@@ -33,7 +33,7 @@ This will start the PostgreSQL container in the background.
 To start the server, use the following command:
 
 ```bash
-./web_shop
+./shop_server
 ```
 
 To start the client, use:

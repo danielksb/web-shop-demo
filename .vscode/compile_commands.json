@@ -1,0 +1,42 @@
+[
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/displayorders.c -o build/displayorders.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/displayorders.c"
+    },
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/alloc_arena.c -o build/alloc_arena.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/alloc_arena.c"
+    },
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/database.c -o build/database.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/database.c"
+    },
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/server.c -o build/server.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/server.c"
+    },
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/addorder.c -o build/addorder.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/addorder.c"
+    },
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/echo_server.c -o build/echo_server.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/echo_server.c"
+    },
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/shop_server.c -o build/shop_server.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/shop_server.c"
+    },
+    {
+        "command": "gcc -Wall -Wextra -Wpedantic `pkg-config --cflags libpq` -pthread -O3 -c src/client.c -o build/client.o",
+        "directory": "/home/dank/projects/web-shop-demo",
+        "file": "/home/dank/projects/web-shop-demo/src/client.c"
+    }
+]
