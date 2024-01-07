@@ -116,8 +116,8 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        printf("Usage: [order]\r\n");
-        return 1;
+        printf("Usage: [order, error, help]\r\n");
+        return EXIT_FAILURE;
     }
 
     if (strcmp(argv[1], "order") == 0)
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
         if (argc <= 2)
         {
             printf("Usage: order [list]\r\n");
-            return 1;
+            return EXIT_FAILURE;
         }
         if (argc > 2)
         {
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
             else
             {
                 fprintf(stderr, "ERROR: unknown order command \"%s\"\r\n", argv[2]);
-                return 1;
+                return EXIT_FAILURE;
             }
         }
     }
@@ -144,9 +144,16 @@ int main(int argc, char *argv[])
     {
         return send_invalid_request();
     }
+    else if (strcmp(argv[1], "help") == 0) {
+        printf("== Help ==\r\n");
+        printf("%s order - CRUD operations for orders\r\n", argv[0]);
+        printf("%s error - execute an invalid request\r\n", argv[0]);
+        printf("%s help  - usage information\r\n", argv[0]);
+        return EXIT_SUCCESS;
+    }
     else
     {
         fprintf(stderr, "ERROR: unknown command \"%s\"\r\n", argv[1]);
-        return 1;
+        return EXIT_FAILURE;
     }
 }
