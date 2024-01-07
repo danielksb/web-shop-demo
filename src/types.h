@@ -13,4 +13,17 @@ typedef struct {
     char        name[255];  // item name
 } OrderItem;
 
+/// @brief Single Order
+typedef struct {
+    int32_t     id;         // order id
+    char        status[50]; // name of the status of the order
+    char        date[32];   // date of the last change of the order
+} Order;
+
+/// @brief Order item combined with the information about it's order
+typedef struct {
+    Order order;
+    OrderItem order_item;
+} FullOrderItem;
+
 #endif

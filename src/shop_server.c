@@ -54,12 +54,13 @@ int send_display_order_response(int client_socket)
         .magicnum = API_MAGIC_NUM,
         .version = 1,
         .response_id = RESPONSE_DISPLAY_ORDERS,
-        .payload_size = 0};
+        .payload_size = 0
+    };
     if (send(client_socket, &res_header, sizeof(res_header), 0) < 0)
     {
         char systemcall_err_msg[512];
         strerror_r(errno, systemcall_err_msg, sizeof(systemcall_err_msg));
-        fprintf(stderr, "ERROR: cannot send error response %s\r\n", systemcall_err_msg);
+        fprintf(stderr, "ERROR: cannot send display order response %s\r\n", systemcall_err_msg);
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -142,7 +143,7 @@ int main(int argc, char *argv[])
         printf("ERROR: cannot initalize mutex\r\n");
         return 1;
     }
-    ServerError error = server_loop(&server, server_port);
+    Error error = server_loop(&server, server_port);
     fprintf(stderr, "ERROR: cannot enter server loop: %s\r\n", error.msg);
     return 1;
 }

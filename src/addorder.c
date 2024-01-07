@@ -6,6 +6,7 @@
 
 #include "types.h"
 #include "database.h"
+#include "error.h"
 
 #define MAX_ITEM_IDS 100
 
@@ -48,6 +49,8 @@ void count_item_ids(ItemCount* counts, int *num_counts, int max_counts, int item
 
 int main(int argc, char **argv) {
 
+    Error error = {0};
+
     // Parse item IDs from command line arguments
     int item_ids[MAX_ITEM_IDS];
     int num_items = 0;
@@ -70,13 +73,15 @@ int main(int argc, char **argv) {
         die("cannot create connection");
     }
 
-    if (db_begin_transaction(conn)) {
+    if (db_begin_transaction(conn, &error) != EXIT_SUCCESS) {
+        fprintf(stderr, "ERROR: %s\r\n", error.msg);
         die("cannot begin transaction");
     }
 
     // Create new order
     int32_t order_id;
-    if (db_insert_order(conn, &order_id)) {
+    if (db_insert_order(conn, &order_id, &error) != EXIT_SUCCESS) {
+        fprintf(stderr, "ERROR: %s\r\n", error.msg);
         die("cannot insert new order");
     }
 
@@ -86,19 +91,22 @@ int main(int argc, char **argv) {
 
         // check if order item exists
         int32_t price;
-        if (db_get_price_from_item(conn, item.id, &price)) {
+        if (db_get_price_from_item(conn, item.id, &price, &error) != EXIT_SUCCESS) {
+            fprintf(stderr, "ERROR: %s\r\n", error.msg);
             die("cannot get price");
         }
 
         // create order item
-        if (db_add_item_to_order(conn, order_id, item.id, item.count, price)) {
+        if (db_add_item_to_order(conn, order_id, item.id, item.count, price, &error) != EXIT_SUCCESS) {
+            fprintf(stderr, "ERROR: %s\r\n", error.msg);
             char msg[512];
             snprintf(msg, 512, "cannot add item \"%d\" to order \"%d\"", item.id, order_id);
             die(msg);
         }
     }
 
-    if (db_commit_transaction(conn)) {
+    if (db_commit_transaction(conn, &error) != EXIT_SUCCESS) {
+        fprintf(stderr, "ERROR: %s\r\n", error.msg);
         die("cannot commit transaction");
     }
 
@@ -106,7 +114,8 @@ int main(int argc, char **argv) {
     printf("Order ID: %d\n", order_id);
     OrderItem order_items[50];
     int order_items_count;
-    if (db_get_order_item_by_order_id(conn, order_id, order_items, &order_items_count, 50)) {
+    if (db_get_order_item_by_order_id(conn, order_id, order_items, &order_items_count, 50, &error) != EXIT_SUCCESS) {
+        fprintf(stderr, "ERROR: %s\r\n", error.msg);
         die("cannot get order items");
     }
     printf("Items:\n");

@@ -57,7 +57,7 @@ static void *handle_request_loop(void *arg)
 /// @param listeningSocket address to store the socket file descriptor
 /// @param error Error structure to store the error message in case of an failure
 /// @return EXIT_SUCCESS on success, EXIT_FAILURE on a failure
-static int setup_listening_socket(int port, int *listeningSocket, ServerError *error) {
+static int setup_listening_socket(int port, int *listeningSocket, Error *error) {
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
         strerror_r(errno, error->msg, sizeof(error->msg));
@@ -103,8 +103,8 @@ int server_init(Server *server, void (*client_cb)(int client_socket)) {
     return pthread_mutex_init(&server->mlock, 0);
 }
 
-ServerError server_loop(Server *server, int server_port) {
-    ServerError error = {0};
+Error server_loop(Server *server, int server_port) {
+    Error error = {0};
     signal(SIGINT, server_exit);
 
     signal(SIGPIPE, SIG_IGN);

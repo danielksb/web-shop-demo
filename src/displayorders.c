@@ -51,7 +51,8 @@ int main() {
         " JOIN order_items oi ON oi.order_id = o.order_id"
         " JOIN order_states os ON os.state_id = o.state_id"
         " JOIN items i ON i.item_id = oi.item_id"
-        " ORDER BY o.order_date DESC;");
+        " ORDER BY o.order_date DESC"
+        " LIMIT 10;");
 
     // Check if the query was successful
     if (PQresultStatus(result) != PGRES_TUPLES_OK) {

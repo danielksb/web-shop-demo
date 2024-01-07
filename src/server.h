@@ -2,6 +2,9 @@
 #define __SERVER_H_
 
 #include <pthread.h>
+#include <stdarg.h>
+
+#include "error.h"
 
 #define THREADS_COUNT   100
 
@@ -11,10 +14,6 @@ typedef struct {
     pthread_mutex_t mlock;                // lock for mutual access to listen()
     void (*client_cb)(int client_socket); // callback for talking to clients
 } Server;
-
-typedef struct {
-    char msg[512];      // null terminated error message
-} ServerError;
 
 /// @brief Initializes the server
 /// @param server  pointer to server struct
@@ -28,6 +27,6 @@ int server_init(Server *server, void (*client_cb)(int client_socket));
 /// @param server initalized server struct
 /// @param server_port listing port
 /// @return Error description
-ServerError server_loop(Server *server, int server_port);
+Error server_loop(Server *server, int server_port);
 
 #endif
